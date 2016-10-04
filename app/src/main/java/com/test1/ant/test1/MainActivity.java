@@ -1,38 +1,151 @@
 package com.test1.ant.test1;
 
-import android.support.v7.app.AppCompatActivity;
+
+
+import android.app.Activity;
+import android.content.ClipData;
+import android.content.ClipDescription;
+import android.content.Context;
+import android.graphics.drawable.Drawable;
 import android.os.Bundle;
-import android.view.Menu;
-import android.view.MenuItem;
+import android.util.Log;
+import android.view.DragEvent;
+import android.view.View;
+import android.view.View.DragShadowBuilder;
+import android.view.View.OnDragListener;
+import android.view.View.OnLongClickListener;
+import android.view.ViewGroup;
+import android.widget.ImageView;
+import android.widget.LinearLayout;
+import android.widget.TextView;
+import android.widget.Toast;
 
-public class MainActivity extends AppCompatActivity {
+
+public class MainActivity extends Activity {
+
+    private ImageView mImg;
+    private static final String IMAGEVIEW_TAG = "드래그 이미지";
 
     @Override
-    protected void onCreate(Bundle savedInstanceState) {
+    public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+
         setContentView(R.layout.activity_main);
+        mImg = (ImageView) findViewById(R.id.image);
+        mImg.setTag(IMAGEVIEW_TAG);
+
+        mImg.setOnLongClickListener(new LongClickListener());
+
+        findViewById(R.id.toplinear).setOnDragListener(
+                new DragListener());
+        findViewById(R.id.bottomlinear).setOnDragListener(
+                new DragListener());
+
     }
 
+    private final class LongClickListener implements
+            OnLongClickListener {
 
-    @Override
-    public boolean onCreateOptionsMenu(Menu menu) {
-        // Inflate the menu; this adds items to the action bar if it is present.
-        getMenuInflater().inflate(R.menu.menu_main, menu);
-        return true;
-    }
+        public boolean onLongClick(View view) {
 
-    @Override
-    public boolean onOptionsItemSelected(MenuItem item) {
-        // Handle action bar item clicks here. The action bar will
-        // automatically handle clicks on the Home/Up button, so long
-        // as you specify a parent activity in AndroidManifest.xml.
-        int id = item.getItemId();
+            // 태그 생성
+            ClipData.Item item = new ClipData.Item(
+                    (CharSequence) view.getTag());
 
-        //noinspection SimplifiableIfStatement
-        if (id == R.id.action_settings) {
+            String[] mimeTypes = { ClipDescription.MIMETYPE_TEXT_PLAIN };
+            ClipData data = new ClipData(view.getTag().toString(),
+                    mimeTypes, item);
+            DragShadowBuilder shadowBuilder = new View.DragShadowBuilder(
+                    view);
+
+            view.startDrag(data, // data to be dragged
+                    shadowBuilder, // drag shadow
+                    view, // 드래그 드랍할  Vew
+                    0 // 필요없은 플래그
+            );
+
+            view.setVisibility(View.INVISIBLE);
             return true;
         }
+    }
 
-        return super.onOptionsItemSelected(item);
+    class DragListener implements OnDragListener {
+        Drawable normalShape = getResources().getDrawable(
+                R.drawable.normal_shape);
+        Drawable targetShape = getResources().getDrawable(
+                R.drawable.target_shape);
+
+        public boolean onDrag(View v, DragEvent event) {
+
+            // 이벤트 시작
+            switch (event.getAction()) {
+
+                // 이미지를 드래그 시작될때
+                case DragEvent.ACTION_DRAG_STARTED:
+                    Log.d("DragClickListener", "ACTION_DRAG_STARTED");
+                    break;
+
+                // 드래그한 이미지를 옮길려는 지역으로 들어왔을때
+                case DragEvent.ACTION_DRAG_ENTERED:
+                    Log.d("DragClickListener", "ACTION_DRAG_ENTERED");
+                    // 이미지가 들어왔다는 것을 알려주기 위해 배경이미지 변경
+                    v.setBackground(targetShape);
+                    break;
+
+                // 드래그한 이미지가 영역을 빠져 나갈때
+                case DragEvent.ACTION_DRAG_EXITED:
+                    Log.d("DragClickListener", "ACTION_DRAG_EXITED");
+                    v.setBackground(normalShape);
+                    break;
+
+                // 이미지를 드래그해서 드랍시켰을때
+                case DragEvent.ACTION_DROP:
+                    Log.d("DragClickListener", "ACTION_DROP");
+
+                    if (v == findViewById(R.id.bottomlinear)) {
+                        View view = (View) event.getLocalState();
+                        ViewGroup viewgroup = (ViewGroup) view
+                                .getParent();
+                        viewgroup.removeView(view);
+
+                        // change the text
+                        TextView text = (TextView) v
+                                .findViewById(R.id.text);
+                        text.setText("이미지가 드랍되었습니다.");
+
+                        LinearLayout containView = (LinearLayout) v;
+                        containView.addView(view);
+                        view.setVisibility(View.VISIBLE);
+
+                    }else if (v == findViewById(R.id.toplinear)) {
+                        View view = (View) event.getLocalState();
+                        ViewGroup viewgroup = (ViewGroup) view
+                                .getParent();
+                        viewgroup.removeView(view);
+
+                        LinearLayout containView = (LinearLayout) v;
+                        containView.addView(view);
+                        view.setVisibility(View.VISIBLE);
+
+                    }else {
+                        View view = (View) event.getLocalState();
+                        view.setVisibility(View.VISIBLE);
+                        Context context = getApplicationContext();
+                        Toast.makeText(context,
+                                "이미지를 다른 지역에 드랍할수 없습니다.",
+                                Toast.LENGTH_LONG).show();
+                        break;
+                    }
+                    break;
+
+                case DragEvent.ACTION_DRAG_ENDED:
+                    Log.d("DragClickListener", "ACTION_DRAG_ENDED");
+                    v.setBackground(normalShape); // go back to normal shape
+
+                default:
+                    break;
+            }
+            return true;
+        }
     }
 }
